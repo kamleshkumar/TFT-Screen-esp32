@@ -1,0 +1,57 @@
+"#include <TFT_eSPI.h> // Include the TFT_eSPI library
+
+// Pin definitions
+#define TFT_CS     5  // Define your TFT CS pin
+#define TFT_RST    22 // Define your TFT reset pin
+#define TFT_DC     21 // Define your TFT data/command pin
+
+// Color definitions
+#define BLACK   0x0000
+#define WHITE   0xFFFF
+#define RED     0xF800
+#define GREEN   0x07E0
+#define BLUE    0x001F
+
+TFT_eSPI tft = TFT_eSPI(); // Create a TFT_eSPI object
+
+// Thermometer dimensions
+#define THERM_X     100 // X coordinate of the thermometer
+#define THERM_Y     10  // Y coordinate of the thermometer
+#define THERM_WIDTH 20  // Width of the thermometer
+#define THERM_HEIGHT 80 // Height of the thermometer
+
+// Temperature range (adjust as needed)
+#define TEMP_MIN    0   // Minimum temperature value
+#define TEMP_MAX    100 // Maximum temperature value
+
+void setup() {
+  tft.init(); // Initialize the display
+  tft.setRotation(1); // Set display rotation if needed
+  tft.fillScreen(BLACK); // Fill screen with black color
+}
+
+void loop() {
+  // Simulated temperature value (replace this with your actual temperature reading)
+  float temperature = random(TEMP_MIN, TEMP_MAX);
+
+  // Clear the thermometer area
+  tft.fillRect(THERM_X, THERM_Y, THERM_WIDTH, THERM_HEIGHT, BLACK);
+
+  // Draw thermometer outline
+  tft.drawRect(THERM_X, THERM_Y, THERM_WIDTH, THERM_HEIGHT, WHITE);
+
+  // Calculate height of the thermometer bar based on the temperature
+  float barHeight = map(temperature, TEMP_MIN, TEMP_MAX, THERM_HEIGHT, 0);
+  
+  // Draw thermometer bar
+  tft.fillRect(THERM_X + 1, THERM_Y + 1 + (THERM_HEIGHT - barHeight), THERM_WIDTH - 2, barHeight - 1, RED);
+
+  // Draw temperature text
+  tft.setTextSize(2);
+  tft.setTextColor(WHITE);
+  tft.setCursor(THERM_X + THERM_WIDTH + 10, THERM_Y + THERM_HEIGHT - 20);
+  tft.print(temperature);
+  tft.print(""C"");
+
+  delay(1000); // Update temperature reading every second
+}"
