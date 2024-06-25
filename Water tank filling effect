@@ -1,0 +1,86 @@
+#include <TFT_eSPI.h>
+#include ""Tone.h"" // Include the tones header file
+
+#define TFT_CS     5
+#define TFT_RST   -1  // No reset pin
+#define TFT_DC     4
+#define TFT_MOSI  23
+#define TFT_SCLK  18
+#define BUZZER_PIN 19 // Define the pin for the buzzer
+
+#define BLACK   0x0000
+#define WHITE   0xFFFF
+#define RED     0xF800
+#define GREEN   0x07E0
+#define BLUE    0x001F
+
+TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
+
+const int tankWidth = 120;
+const int tankHeight = 160;
+const int tankTopLeftX = 60;
+const int tankTopLeftY = 20;
+const int alarmLevel = 80; // Adjust this level based on your tank capacity
+const int fillingSpeed = 50; // Adjust for desired filling speed (milliseconds per step)
+
+void setup() {
+  Serial.begin(115200);
+  tft.init();
+  tft.setRotation(1);  // Adjust based on your display orientation
+  tft.fillScreen(TFT_BLACK);
+  pinMode(BUZZER_PIN, OUTPUT);
+}
+
+void loop() {
+  drawTank();
+  int filledLevel = fillTank();
+  int percentageFilled = map(filledLevel, 0, tankHeight, 0, 100);
+  displayPercentage(percentageFilled);
+  if (percentageFilled >= alarmLevel) {
+    triggerAlarm();
+  }
+}
+
+void drawTank() {
+  tft.drawRect(tankTopLeftX, tankTopLeftY, tankWidth, tankHeight, TFT_WHITE);
+}
+
+int fillTank() {
+  static int currentLevel = 0;
+  if (currentLevel <= tankHeight) {
+    tft.fillRect(tankTopLeftX + 1, tankTopLeftY + tankHeight - currentLevel + 1, tankWidth - 1, currentLevel - 1, TFT_BLUE);
+    delay(fillingSpeed);
+    currentLevel++;
+  }
+  return currentLevel;
+}
+
+void displayPercentage(int percentage) {
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(10, 10);
+  tft.fillRect(10, 10, 50, 20, TFT_BLACK); // Clear previous percentage display
+  tft.print(percentage);
+  tft.print(""%"");
+}
+
+void triggerAlarm() {
+  tone(BUZZER_PIN, NOTE_C4, 200); // Play alarm tone
+  delay(200);
+  tone(BUZZER_PIN, NOTE_G4, 200);
+  delay(200);
+  tone(BUZZER_PIN, NOTE_E4, 200);
+  delay(200);
+  tone(BUZZER_PIN, NOTE_C4, 200);
+  delay(200);
+  tft.fillRect(0, 0, tft.width(), tft.height(), TFT_RED); // Flash screen red for alarm
+  delay(1000); // Flash duration
+  tft.fillScreen(TFT_BLACK); // Clear screen
+  flashScreen(RED, 500); // Flash with red color for 500 milliseconds
+  flashScreen(BLACK, 500); 
+}
+
+void flashScreen(uint16_t color, uint16_t duration) {
+  tft.fillScreen(color); // Fill screen with specified color
+  delay(duration); // Wait for the specified duration
+}
