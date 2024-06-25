@@ -1,0 +1,146 @@
+#include <TFT_eSPI.h>
+#include <XPT2046_Touchscreen.h>
+
+TFT_eSPI tft = TFT_eSPI();
+
+#define XPT2046_IRQ 36   // T_IRQ
+#define XPT2046_MOSI 32  // T_DIN
+#define XPT2046_MISO 39  // T_OUT
+#define XPT2046_CLK 25   // T_CLK
+#define XPT2046_CS 33    // T_CS
+
+SPIClass touchscreenSPI = SPIClass(VSPI);
+XPT2046_Touchscreen touchscreen(XPT2046_CS, XPT2046_IRQ);
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
+#define FONT_SIZE 2
+
+#define TAB_HEIGHT 40
+#define TAB_COUNT 3
+
+#define BUTTON_MARGIN 10
+
+int currentTab = 0;
+
+// Coordinates for button positions
+int buttonCoords[3][4][4];
+
+bool buttonStates[3][4] = {
+  {false, false, false, false},
+  {false, false, false, false},
+  {false, false, false, false}
+};
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Starting setup...");
+
+  // Initialize touchscreen
+  touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
+  touchscreen.begin(touchscreenSPI);
+  touchscreen.setRotation(1);
+
+  // Initialize TFT
+  tft.init();
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLACK);
+  Serial.println("TFT initialized.");
+
+  // Calculate button positions dynamically
+  calculateButtonCoords();
+
+  // Draw initial tabs and buttons
+  drawTabs();
+  drawButtons();
+}
+
+void loop() {
+  int x, y, z;  // Declare variables here
+
+  if (touchscreen.tirqTouched() && touchscreen.touched()) {
+    TS_Point p = touchscreen.getPoint();
+    int x = map(p.x, 3890, 435, 0, tft.width()); // Adjusted mapping
+    int y = map(p.y, 240, 3976, 0, tft.height()); // Adjusted mapping
+    z = p.z;
+
+    if (y < TAB_HEIGHT) {
+      int newTab = x / (SCREEN_WIDTH / TAB_COUNT);
+      if (newTab != currentTab) {
+        currentTab = newTab;
+        drawTabs();
+        drawButtons();
+      }
+    } else {
+      for (int i = 0; i < 4; i++) {
+        int btnX = buttonCoords[currentTab][i][0];
+        int btnY = buttonCoords[currentTab][i][1];
+        int btnW = buttonCoords[currentTab][i][2];
+        int btnH = buttonCoords[currentTab][i][3];
+        if (x > btnX && x < btnX + btnW && y > btnY && y < btnY + btnH) {
+          buttonStates[currentTab][i] = !buttonStates[currentTab][i];
+          drawButton(i);
+        }
+      }
+    }
+  }
+}
+
+void calculateButtonCoords() {
+  int availableHeight = SCREEN_HEIGHT - TAB_HEIGHT - 3 * BUTTON_MARGIN;
+  int buttonHeight = availableHeight / 2;
+  int buttonWidth = (SCREEN_WIDTH - 3 * BUTTON_MARGIN) / 2;
+
+  for (int tab = 0; tab < 3; tab++) {
+    for (int i = 0; i < 4; i++) {
+      buttonCoords[tab][i][0] = BUTTON_MARGIN + (i % 2) * (buttonWidth + BUTTON_MARGIN);
+      buttonCoords[tab][i][1] = TAB_HEIGHT + BUTTON_MARGIN + (i / 2) * (buttonHeight + BUTTON_MARGIN);
+      buttonCoords[tab][i][2] = buttonWidth;
+      buttonCoords[tab][i][3] = buttonHeight;
+    }
+  }
+}
+
+void drawTabs() {
+  tft.fillRect(0, 0, SCREEN_WIDTH, TAB_HEIGHT, TFT_WHITE);
+  tft.setTextColor(TFT_BLACK);
+  tft.setTextSize(FONT_SIZE);
+  tft.setTextDatum(MC_DATUM);
+  for (int i = 0; i < TAB_COUNT; i++) {
+    int x = i * (SCREEN_WIDTH / TAB_COUNT);
+    if (i == currentTab) {
+      tft.fillRect(x, 0, SCREEN_WIDTH / TAB_COUNT, TAB_HEIGHT, TFT_BLUE);
+      tft.setTextColor(TFT_WHITE);
+      tft.drawString("Tab " + String(i + 1), x + (SCREEN_WIDTH / TAB_COUNT) / 2, TAB_HEIGHT / 2);
+      tft.setTextColor(TFT_BLACK);
+    } else {
+      tft.fillRect(x, 0, SCREEN_WIDTH / TAB_COUNT, TAB_HEIGHT, TFT_WHITE);
+      tft.drawRect(x, 0, SCREEN_WIDTH / TAB_COUNT, TAB_HEIGHT, TFT_BLACK);
+      tft.drawString("Tab " + String(i + 1), x + (SCREEN_WIDTH / TAB_COUNT) / 2, TAB_HEIGHT / 2);
+    }
+  }
+}
+
+void drawButtons() {
+  tft.fillRect(0, TAB_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - TAB_HEIGHT, TFT_BLACK);
+  for (int i = 0; i < 4; i++) {
+    drawButton(i);
+  }
+}
+
+void drawButton(int buttonIndex) {
+  int x = buttonCoords[currentTab][buttonIndex][0];
+  int y = buttonCoords[currentTab][buttonIndex][1];
+  int w = buttonCoords[currentTab][buttonIndex][2];
+  int h = buttonCoords[currentTab][buttonIndex][3];
+  if (buttonStates[currentTab][buttonIndex]) {
+    tft.fillRect(x, y, w, h, TFT_GREEN);
+    tft.setTextColor(TFT_BLACK);
+    tft.drawString("ON", x + w / 2, y + h / 2);
+  } else {
+    tft.fillRect(x, y, w, h, TFT_RED);
+    tft.setTextColor(TFT_WHITE);
+    tft.drawString("OFF", x + w / 2, y + h / 2);
+  }
+  tft.drawRect(x, y, w, h, TFT_WHITE);
+}
