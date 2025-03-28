@@ -1,0 +1,65 @@
+#include <SPI.h>
+#include <TFT_eSPI.h>
+#include <XPT2046_Touchscreen.h>
+
+TFT_eSPI tft = TFT_eSPI();
+
+// Touchscreen pins (using your pin mapping)
+#define XPT2046_CLK 38   // T_CLK
+#define XPT2046_CS 37    // T_CS
+#define XPT2046_MOSI 35  // T_DIN
+#define XPT2046_MISO 39  // T_OUT
+#define XPT2046_IRQ 36   // T_IRQ
+
+SPIClass touchscreenSPI = SPIClass(VSPI);
+XPT2046_Touchscreen touchscreen(XPT2046_CS, XPT2046_IRQ);
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
+
+// Variables to store calibration data
+int minX = 4095, maxX = 0;
+int minY = 4095, maxY = 0;
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Initialize SPI for touchscreen
+  touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
+  touchscreen.begin(touchscreenSPI);
+  touchscreen.setRotation(1);  // Adjust if needed
+  
+  // Initialize display
+  tft.init();
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  
+  tft.drawCentreString("Touch Calibration", SCREEN_WIDTH/2, 30, 2);
+  tft.drawCentreString("Touch all corners", SCREEN_WIDTH/2, 60, 2);
+  tft.drawCentreString("of the screen", SCREEN_WIDTH/2, 90, 2);
+  tft.drawCentreString("Press reset when done", SCREEN_WIDTH/2, 150, 2);
+}
+
+void loop() {
+  if (touchscreen.touched()) {
+    TS_Point p = touchscreen.getPoint();
+    
+    // Update min/max values
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+    
+    // Display raw values
+    tft.fillRect(0, 180, SCREEN_WIDTH, 60, TFT_BLACK);
+    tft.setCursor(10, 180);
+    tft.printf("Raw X: %4d (%4d-%4d)", p.x, minX, maxX);
+    tft.setCursor(10, 200);
+    tft.printf("Raw Y: %4d (%4d-%4d)", p.y, minY, maxY);
+    tft.setCursor(10, 220);
+    tft.printf("Pressure: %4d", p.z);
+    
+    delay(100);
+  }
+}
