@@ -1,3 +1,20 @@
+// resulat and value setting 
+
+// this is serial result on the serial
+
+// #define touchscreen_Min_X 3834
+  // #define touchscreen_Max_X 324
+  // #define touchscreen_Min_Y 186
+  // #define touchscreen_Max_Y 3684
+
+// this is whow value should be maped on project for tft.
+ //x = map(p.x, 324, 3834, 1, SCREEN_WIDTH);
+  //    y = map(p.y, 3684, 186, 1, SCREEN_HEIGHT);
+  //    z = p.z;
+
+  
+//----------------------------------------------
+
 #include <SPI.h>
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
